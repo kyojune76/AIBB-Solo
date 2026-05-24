@@ -13,6 +13,9 @@ venv/
 logs/
 *.log
 
+# Project snapshots (auto-generated, stale)
+full_project.txt
+
 # OS
 .DS_Store
 Thumbs.db
