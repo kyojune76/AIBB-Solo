@@ -14,7 +14,7 @@ class DockerManager:
         
         try:
             subprocess.run(
-                ["docker-compose", "up", "-d"],
+                ["docker", "compose", "up", "-d"],
                 cwd=target_path,
                 check=True,
                 capture_output=True
@@ -32,7 +32,7 @@ class DockerManager:
         
         try:
             subprocess.run(
-                ["docker-compose", "down"],
+                ["docker", "compose", "down"],
                 cwd=target_path,
                 check=True,
                 capture_output=True

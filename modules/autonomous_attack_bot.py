@@ -19,6 +19,7 @@ class AutonomousAttackBot:
             raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
 
         self.client = Anthropic(api_key=api_key)
+        self.model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
         self.history = []
 
         # 실험 모드: Phase 1만, 시도 3번 (토큰 절약)
@@ -64,7 +65,7 @@ Return ONLY valid JSON, no markdown:
 
         try:
             response = self.client.messages.create(
-                model="claude-sonnet-4-5",
+                model=self.model,
                 max_tokens=600,
                 temperature=0.7,
                 messages=[{"role": "user", "content": prompt}]
