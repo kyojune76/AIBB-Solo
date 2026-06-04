@@ -11,8 +11,8 @@ from pathlib import Path
 
 
 class AttemptLog:
-    def __init__(self, log_path="results/attempts.jsonl"):
-        self.log_path = Path(log_path)
+    def __init__(self, target_name="default"):
+        self.log_path = Path(f"results/{target_name}_attempts.jsonl")
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
     def append(self, record):

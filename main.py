@@ -5,152 +5,167 @@ LLM이 Scanner 결과만 보고 자율적으로 공격
 """
 import sys
 import json
-from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env (ANTHROPIC_API_KEY)
 load_dotenv()
 
-# Module imports
 from modules.docker_manager import DockerManager
 from modules.scanner import execute_full_scan
 from modules.autonomous_attack_bot import AutonomousAttackBot
+
+TARGETS = {
+    "1": {
+        "name": "shellshock",
+        "path": "./targets/shellshock",
+        "port": 8080,
+        "url": "http://localhost:8080"
+    },
+    "2": {
+        "name": "spring4shell",
+        "path": "./targets/spring4shell",
+        "port": 8080,
+        "url": "http://localhost:8080"
+    }
+}
+
 
 class AIBB:
     def __init__(self):
         print("[*] AIBB (AI BunkerBuster) Initializing")
         self.docker_mgr = DockerManager()
         self.attack_bot = AutonomousAttackBot()
-        self.targets = []
-        self.results = {}
+        self.active_target = None  # 현재 실행 중인 타겟
 
-    def run(self):
-        """Main execution function"""
+    def show_menu(self):
         print("\n" + "="*50)
-        print("AIBB Automated Penetration Testing Started")
-        print("="*50 + "\n")
-
-        # 1. Load targets
-        self.load_targets()
-
-        # 2. Attack each target
-        for target in self.targets:
-            self.attack_target(target)
-
-        # 3. Generate final report
-        self.generate_report()
-
-    def load_targets(self):
-        """Load attack targets (CVE 정보 없음 - 블라인드 모드)"""
-        self.targets = [
-            {
-                "name": "shellshock",
-                "path": "./targets/shellshock",
-                "port": 8080,
-                "url": "http://localhost:8080"
-            }
-        ]
-        print(f"[*] {len(self.targets)} target(s) loaded")
-
-    def attack_target(self, target):
-        """Attack individual target"""
-        print(f"\n{'='*50}")
-        print(f"[Target] {target['name']}")
-        print(f"{'='*50}")
-
-        # Step 1: Start Docker
-        print(f"\n[Step 1] Starting Docker container")
-        if not self.docker_mgr.start_container(target['path']):
-            print("[ERROR] Failed to start Docker")
-            return
-
-        # Step 2: Run Scanner (Nmap + Nuclei)
-        print(f"\n[Step 2] Scanning (Nmap + Nuclei)")
-        scan_data = None
-        try:
-            scan_result = execute_full_scan("127.0.0.1", target['port'])
-            scan_data = json.loads(scan_result)
-
-            # 스캔 결과 요약 출력
-            print(f"\n[Scan Summary]")
-            print(f"  Target: {scan_data['reconnaissance']['target_ip']}")
-            print(f"  Status: {scan_data['reconnaissance']['host_status']}")
-            print(f"  Open Ports: {len(scan_data['reconnaissance']['open_ports'])}")
-
-            for port in scan_data['reconnaissance']['open_ports']:
-                print(f"    - Port {port['port']}: {port['service_name']} {port['version']}")
-
-            vuln_count = len(scan_data['vulnerability_assessment']['vulnerabilities'])
-            print(f"\n  Vulnerabilities: {vuln_count} found")
-
-            for vuln in scan_data['vulnerability_assessment']['vulnerabilities']:
-                print(f"    - {vuln['vulnerability_name']} ({vuln['severity']})")
-
-            print(f"\n[OK] Scan completed")
-
-        except Exception as e:
-            print(f"[ERROR] Scanner failed: {e}")
-            self.docker_mgr.stop_container(target['path'])
-            return
-
-        # Step 3: Autonomous AI Attack (Blind Mode)
-        print(f"\n[Step 3] AI Autonomous Attack (Blind Mode)")
-        try:
-            # ⭐ 블라인드 모드: scan_data만 넘김. CVE/타입 정보 절대 안 줌
-            attack_result = self.attack_bot.autonomous_attack(
-                target_url=target['url'],
-                scan_data=scan_data
-            )
-
-            self.results[target['name']] = attack_result
-
-        except Exception as e:
-            print(f"[ERROR] Attack failed: {e}")
-            import traceback
-            traceback.print_exc()
-            self.results[target['name']] = {
-                "success": False,
-                "error": str(e)
-            }
-
-        # Step 4: Docker cleanup
-        print(f"\n[Step 4] Docker cleanup")
-        self.docker_mgr.stop_container(target['path'])
-
-    def generate_report(self):
-        """Generate final report"""
-        print("\n" + "="*50)
-        print("[Report] Final Results")
+        print("  AIBB — 타겟 선택")
+        print("="*50)
+        for key, t in TARGETS.items():
+            print(f"  {key}. {t['name']}")
+        print("  0. 종료")
         print("="*50)
 
-        for name, result in self.results.items():
-            if result.get('success'):
-                print(f"\n{name}: [SUCCESS]")
-                print(f"  Flag: {result['flag']}")
-                print(f"  Phase: {result['phase']}")
-                print(f"  Attempts: {result['attempts']}")
-                if 'payload' in result:
-                    reasoning = result['payload'].get('reasoning', 'N/A')
-                    print(f"  Reasoning: {reasoning[:150]}")
-            else:
-                print(f"\n{name}: [FAIL]")
-                if 'total_attempts' in result:
-                    print(f"  Total attempts: {result['total_attempts']}")
-                if 'error' in result:
-                    print(f"  Error: {result['error']}")
+    def select_target(self):
+        while True:
+            self.show_menu()
+            choice = input("번호 입력: ").strip()
+            if choice == "0":
+                return None
+            if choice in TARGETS:
+                return TARGETS[choice]
+            print("[!] 잘못된 입력입니다.")
+
+    def switch_target(self, new_target):
+        """타겟 전환 시 기존 컨테이너 내리고 새 것 올리기."""
+        if self.active_target and self.active_target['path'] != new_target['path']:
+            print(f"\n[*] 타겟 전환 — 기존 컨테이너 종료: {self.active_target['name']}")
+            self.docker_mgr.stop_container(self.active_target['path'])
+            self.active_target = None
+
+        if self.active_target is None:
+            print(f"\n[Step 1] Docker 컨테이너 기동: {new_target['name']}")
+            if not self.docker_mgr.start_container(new_target['path']):
+                print("[ERROR] Docker 기동 실패")
+                return False
+            self.active_target = new_target
+
+        return True
+
+    def run_scan(self, target):
+        print(f"\n[Step 2] 스캔 (Nmap + Nuclei)")
+        scan_result = execute_full_scan("127.0.0.1", target['port'])
+        scan_data = json.loads(scan_result)
+
+        print(f"\n[Scan Summary]")
+        print(f"  Status: {scan_data['reconnaissance']['host_status']}")
+        for port in scan_data['reconnaissance']['open_ports']:
+            print(f"  Port {port['port']}: {port['service_name']} {port['version']}")
+        vulns = scan_data['vulnerability_assessment']['vulnerabilities']
+        print(f"  Vulnerabilities: {len(vulns)}")
+        for v in vulns:
+            print(f"    - {v['vulnerability_name']} ({v['severity']})")
+
+        return scan_data
+
+    def run_attack(self, target, scan_data):
+        print(f"\n[Step 3] AI 자율 공격 (Blind Mode)")
+        result = self.attack_bot.autonomous_attack(
+            target_url=target['url'],
+            scan_data=scan_data,
+            target_name=target['name']
+        )
+        return result
+
+    def print_result(self, target_name, result):
+        print("\n" + "="*50)
+        print("[Report]")
+        print("="*50)
+        if result.get('success'):
+            print(f"  {target_name}: SUCCESS")
+            print(f"  Flag : {result['flag']}")
+            print(f"  Attempts: {result.get('attempts')}")
+        else:
+            print(f"  {target_name}: FAIL")
+            print(f"  Total attempts: {result.get('total_attempts', '?')}")
+
+    def run(self):
+        try:
+            while True:
+                target = self.select_target()
+
+                if target is None:
+                    print("\n[*] 종료합니다.")
+                    if self.active_target:
+                        print(f"[*] 컨테이너 종료: {self.active_target['name']}")
+                        self.docker_mgr.stop_container(self.active_target['path'])
+                    break
+
+                # 컨테이너 기동/전환
+                if not self.switch_target(target):
+                    continue
+
+                # 스캔
+                try:
+                    scan_data = self.run_scan(target)
+                except Exception as e:
+                    print(f"[ERROR] 스캔 실패: {e}")
+                    continue
+
+                # 공격
+                try:
+                    result = self.run_attack(target, scan_data)
+                    self.print_result(target['name'], result)
+                except Exception as e:
+                    print(f"[ERROR] 공격 실패: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    continue
+
+                # 루프 여부 확인 (컨테이너는 그대로 유지)
+                print("\n처음으로 돌아갈까요? (y/n): ", end="")
+                ans = input().strip().lower()
+                if ans != "y":
+                    print(f"\n[*] 컨테이너 종료: {self.active_target['name']}")
+                    self.docker_mgr.stop_container(self.active_target['path'])
+                    self.active_target = None
+                    break
+
+        except KeyboardInterrupt:
+            print("\n\n[!] 사용자 중단")
+            if self.active_target:
+                self.docker_mgr.stop_container(self.active_target['path'])
+
 
 def main():
     try:
         aibb = AIBB()
         aibb.run()
-    except KeyboardInterrupt:
-        print("\n\n[!] User interrupted")
-        sys.exit(0)
     except Exception as e:
         print(f"\n[ERROR] {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

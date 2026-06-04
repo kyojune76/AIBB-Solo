@@ -1,0 +1,6 @@
+services:
+  spring:
+    image: vulhub/spring-webmvc:5.3.17
+    ports:
+      - "8080:8080"
+    entrypoint: ["/bin/sh", "-c", "echo 'FLAG{Spring4Shell_RCE_2022}' > /flag.txt && catalina.sh run"]
