@@ -86,8 +86,15 @@ docker compose -f attacker/docker-compose.yml up -d        # 공격자 박스(ai
 docker compose -f targets/shellshock/docker-compose.yml up -d   # 타겟 예: t1
 
 # 6. 실행 (능력 래더 L0~L3 자동 승급)
-python run_blind.py t1     # t1=Shellshock, t2=Spring4Shell
+python run_blind.py t1     # t1=Shellshock, t2=Spring4Shell, t3=SSTI, t4=ThinkPHP
 ```
+
+> 타겟 전환: 모든 타겟은 호스트 8080 포트를 쓰므로 한 번에 하나만 띄웁니다.
+> ```bash
+> docker compose -f targets/spring4shell/docker-compose.yml down   # 기존 타겟 내리고
+> docker compose -f targets/ssti/docker-compose.yml up -d          # 새 타겟 올린 뒤
+> python run_blind.py t3                                           # 같은 라벨로 실행
+> ```
 
 > 안전 범위: 로컬 vulhub 도커 격리 환경 전용. 허용 타겟은 127.0.0.1 / localhost / 도커 내부망뿐입니다. 외부 시스템 대상 공격 금지.
 
@@ -100,9 +107,10 @@ python run_blind.py t1     # t1=Shellshock, t2=Spring4Shell
 
 ## Targets
 
-- CVE-2014-6271 (Shellshock) ✅
-- CVE-2017-5638 (Struts2) 
-- CVE-2021-44228 (Log4Shell) 
+- t1 · CVE-2014-6271 (Shellshock) ✅
+- t2 · CVE-2022-22965 (Spring4Shell) — 진행중
+- t3 · Flask Jinja2 SSTI — 반사형, 블라인드 자기발견 후보
+- t4 · ThinkPHP5 RCE — 대조군(프레임워크 지식 필요, 힌트 래더 검증)
 
 ## Personal Notes
 

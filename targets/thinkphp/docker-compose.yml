@@ -1,0 +1,8 @@
+services:
+  web:
+    image: vulhub/thinkphp:5.0.20
+    volumes:
+      - ./flag.txt:/flag.txt:ro
+    ports:
+      - "8080:80"          # 호스트 8080 고정(run_blind 의 TARGET_URL 규약) → 컨테이너 80
+    container_name: aibb-thinkphp

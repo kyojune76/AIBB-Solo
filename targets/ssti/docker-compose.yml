@@ -1,0 +1,9 @@
+services:
+  web:
+    image: vulhub/flask:1.1.1
+    volumes:
+      - ./src:/app
+      - ./flag.txt:/flag.txt:ro
+    ports:
+      - "8080:8000"        # 호스트 8080 고정(run_blind 의 TARGET_URL 규약) → 컨테이너 8000
+    container_name: aibb-ssti

@@ -1,0 +1,1 @@
+FLAG{SSTI_Jinja2_RCE}
