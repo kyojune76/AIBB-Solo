@@ -1,0 +1,12 @@
+services:
+  attacker:
+    build: .
+    container_name: aibb-attacker
+    # 계속 살아있게만 함. 실제 명령은 docker exec로 주입된다.
+    command: ["sleep", "infinity"]
+    # 타겟의 호스트 매핑 포트(8080)에 host.docker.internal로 접근하기 위함.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # 리버스 셸 캐치용 포트. 타겟 -> host.docker.internal:4444 가 여기로 들어옴.
+    ports:
+      - "4444-4446:4444-4446"

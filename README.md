@@ -81,18 +81,21 @@ pip install -r requirements.txt
 cp .env.example .env
 #   .env 를 열어 ANTHROPIC_API_KEY 값을 채워주세요
 
-# 5. 실행
-python main.py
+# 5. 공격자 박스 + 타겟 컨테이너 기동
+docker compose -f attacker/docker-compose.yml up -d        # 공격자 박스(aibb-attacker)
+docker compose -f targets/shellshock/docker-compose.yml up -d   # 타겟 예: t1
+
+# 6. 실행 (능력 래더 L0~L3 자동 승급)
+python run_blind.py t1     # t1=Shellshock, t2=Spring4Shell
 ```
 
 > 안전 범위: 로컬 vulhub 도커 격리 환경 전용. 허용 타겟은 127.0.0.1 / localhost / 도커 내부망뿐입니다. 외부 시스템 대상 공격 금지.
 
 ## Current Status
 
-✅ Docker Manager
-✅ Scanner Integration
-✅ Main Pipeline
- Autonomous Attack Bot (In Progress)
+✅ Nmap Scanner Integration
+✅ Blind-mode Attack Bot (ReAct 루프 + 능력 래더 L0~L3)
+✅ 타겟 화이트리스트 가드 (http_request + bash 채널)
  Multi-CVE Support (In Progress)
 
 ## Targets
